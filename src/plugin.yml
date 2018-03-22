@@ -1,0 +1,6 @@
+name: Minigame
+main: me.Streampy.minigame.Main
+version: 1.0
+commands:
+  map:
+    description: map commands
