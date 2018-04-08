@@ -11,6 +11,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import me.Streampy.minigame.Main;
 import me.Streampy.minigame.library.records.mapRec;
@@ -35,6 +38,7 @@ public class EventsHandler implements Listener {
 						event.setLine(1, ChatColor.GREEN + event.getLine(1).toLowerCase());
 						event.setLine(3, "0 / " + mapRecord.maxspelers);
 						mapExist = true;
+						mapRecord.sign = event.getBlock();
 						break;
 					}
 				}
@@ -49,11 +53,30 @@ public class EventsHandler implements Listener {
 	}
 	
 	@EventHandler
+	public void onGameLeaveEvent(PlayerQuitEvent event) {
+		Player player = event.getPlayer();
+		for (mapRec mapRecord : mapsList) {
+			for (int a = 0; a < mapRecord.playerList.size(); a++) {
+				String target = mapRecord.playerList.get(a);
+				if (player.getUniqueId().toString().equals(target)) {
+					mapRecord.playerList.remove(a);
+					if (mapRecord.sign.getState() instanceof Sign) {
+						Sign sign = (Sign) mapRecord.sign.getState();
+						sign.setLine(3, mapRecord.playerList.size() + " / " + mapRecord.maxspelers);
+						sign.update();
+					}
+				}
+			}
+		}
+	}
+	
+	@EventHandler
 	public void onPlayerInteract(PlayerInteractEvent event) {
 		Action act = event.getAction();
 		Player player = event.getPlayer();
 		
 		if (act == Action.RIGHT_CLICK_BLOCK) {
+			//join game
 			if (event.getClickedBlock().getState() instanceof Sign) {
 				Sign sign = (Sign) event.getClickedBlock().getState();
 				if (sign.getLine(0).equals(ChatColor.GREEN + "[Minigame]")) {
@@ -71,6 +94,11 @@ public class EventsHandler implements Listener {
 									
 									player.teleport(mapRecord.spawnLoc);
 									player.sendMessage(ChatColor.GREEN + "You got Teleported to your game!");
+									ItemStack bed = new ItemStack(Material.BED);
+									ItemMeta bedmeta = bed.getItemMeta();
+									bedmeta.setDisplayName(ChatColor.RED + "Leave game");
+									bed.setItemMeta(bedmeta);
+									player.getInventory().addItem(bed);
 									sign.setLine(3, mapRecord.playerList.size() + " / " + mapRecord.maxspelers);
 									sign.update();
 								}else {
@@ -85,6 +113,7 @@ public class EventsHandler implements Listener {
 				}
 			}
 		}else if (act == Action.RIGHT_CLICK_AIR ) {
+			//leave game with bed
 			if (event.getItem() == null || event.getItem().getType().equals(Material.AIR)) {
 				return;
 			}
@@ -96,6 +125,12 @@ public class EventsHandler implements Listener {
 						if (players.equals(player.getUniqueId().toString())) {
 							mapRecord.playerList.remove(a);
 							player.sendMessage(ChatColor.RED + "You left the game!");
+							if (mapRecord.sign.getState() instanceof Sign) {
+								Sign sign = (Sign) mapRecord.sign.getState();
+								sign.setLine(3, mapRecord.playerList.size() + " / " + mapRecord.maxspelers);
+								sign.update();
+								player.getInventory().clear();
+							}
 							return;
 						}
 					}
